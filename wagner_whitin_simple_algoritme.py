@@ -125,63 +125,85 @@ def parse_input_string(input_str: str) -> Optional[List[float]]:
         return None
 
 _example_demand = [20, 0, 30, 10, 20, 30, 50, 23, 1435, 13, 13, 244, 11, 23, 12, 23, 12, 23, 12, 23, 12, 23, 12, 23, 33, 12, 1999, 34, 3243, 35, 12, 34, 76, 45, 344, 144, 122]
-_example_setup_cost_val = 100.0
-_example_holding_cost_val = 2.0
+_example_setup_cost_single_val = 100.0
+_example_holding_cost_single_val = 2.0
 
 def use_example_data_callback(sender: Any, app_data: Any, user_data: Any):
     """Populates input fields with example data."""
     demand_str = ", ".join(map(str, _example_demand))
-    num_periods = len(_example_demand)
-    setup_str = ", ".join([str(_example_setup_cost_val)] * num_periods)
-    holding_str = ", ".join([str(_example_holding_cost_val)] * num_periods)
-
     dpg.set_value("demand_input", demand_str)
-    dpg.set_value("setup_cost_input", setup_str)
-    dpg.set_value("holding_cost_input", holding_str)
+    dpg.set_value("setup_cost_input", str(_example_setup_cost_single_val))
+    dpg.set_value("holding_cost_input", str(_example_holding_cost_single_val))
     dpg.set_value("status_text", "Example data loaded. Click 'Calculate'.")
     dpg.set_value("result_cost_text", "Minimum total cost: -")
     dpg.set_value("result_schedule_text", "Order schedule: -")
     dpg.set_value("result_plan_text", "")
 
+def clear_input_callback(sender: Any, app_data: Any, user_data: Any):
+    """Clears all input fields and resets result and status texts."""
+    dpg.set_value("demand_input", "")
+    dpg.set_value("setup_cost_input", "")
+    dpg.set_value("holding_cost_input", "")
+    dpg.set_value("status_text", "Inputs cleared.")
+    dpg.set_value("result_cost_text", "Minimum total cost: -")
+    dpg.set_value("result_schedule_text", "Order schedule: -")
+    dpg.set_value("result_plan_text", "")
 
 def calculate_callback(sender: Any, app_data: Any, user_data: Any):
     """Callback for the Calculate button."""
     dpg.set_value("status_text", "Calculating...")
 
     demand_str = dpg.get_value("demand_input")
-    setup_cost_str = dpg.get_value("setup_cost_input")
-    holding_cost_str = dpg.get_value("holding_cost_input")
+    setup_cost_single_str = dpg.get_value("setup_cost_input")
+    holding_cost_single_str = dpg.get_value("holding_cost_input")
 
     demand = parse_input_string(demand_str)
-    setup_cost = parse_input_string(setup_cost_str)
-    holding_cost = parse_input_string(holding_cost_str)
-
+    
+    setup_cost_single = None
+    holding_cost_single = None
+    
     error_messages = []
     if demand is None:
         error_messages.append("Invalid format for Demand. Use comma-separated numbers.")
-    if setup_cost is None:
-        error_messages.append("Invalid format for Setup Costs. Use comma-separated numbers.")
-    if holding_cost is None:
-        error_messages.append("Invalid format for Holding Costs. Use comma-separated numbers.")
+
+    try:
+        if not setup_cost_single_str.strip():
+            error_messages.append("Setup Cost cannot be empty.")
+        else:
+            setup_cost_single = float(setup_cost_single_str.strip())
+            if setup_cost_single < 0:
+                error_messages.append("Setup cost cannot be negative.")
+    except ValueError:
+        error_messages.append("Invalid format for Setup Cost. Use a single number.")
+
+    try:
+        if not holding_cost_single_str.strip():
+            error_messages.append("Holding Cost cannot be empty.")
+        else:
+            holding_cost_single = float(holding_cost_single_str.strip())
+            if holding_cost_single < 0:
+                error_messages.append("Holding cost cannot be negative.")
+    except ValueError:
+        error_messages.append("Invalid format for Holding Cost. Use a single number.")
+
 
     if error_messages:
         dpg.set_value("status_text", "Error: " + " | ".join(error_messages))
         return
 
+    if demand is None:
+        dpg.set_value("status_text", "Error: Critical input error.")
+        return
+
     if not demand:
         error_messages.append("Demand data cannot be empty.")
     else:
-        if not (len(demand) == len(setup_cost) == len(holding_cost)):
-            error_messages.append(
-                f"All inputs (Demand, Setup, Holding) must have the same number of periods. "
-                f"Got: D={len(demand)}, S={len(setup_cost)}, H={len(holding_cost)}"
-            )
+        num_periods = len(demand)
+        setup_cost = [setup_cost_single] * num_periods
+        holding_cost = [holding_cost_single] * num_periods
+        
         if any(d < 0 for d in demand):
              error_messages.append("Demand values cannot be negative.")
-        if any(s < 0 for s in setup_cost):
-             error_messages.append("Setup costs cannot be negative.")
-        if any(h < 0 for h in holding_cost):
-             error_messages.append("Holding costs cannot be negative.")
 
     if error_messages:
         dpg.set_value("status_text", "Error: " + " | ".join(error_messages))
@@ -216,6 +238,54 @@ def calculate_callback(sender: Any, app_data: Any, user_data: Any):
 if __name__ == "__main__":
     dpg.create_context()
 
+    # Define a dark theme
+    with dpg.theme() as global_theme:
+        with dpg.theme_component(dpg.mvAll): # Apply to all items
+            # Window and Frame Backgrounds
+            dpg.add_theme_color(dpg.mvThemeCol_WindowBg, (30, 30, 30, 255))
+            dpg.add_theme_color(dpg.mvThemeCol_ChildBg, (30, 30, 30, 255))
+            dpg.add_theme_color(dpg.mvThemeCol_FrameBg, (50, 50, 50, 255))
+            dpg.add_theme_color(dpg.mvThemeCol_FrameBgHovered, (60, 60, 60, 255))
+            dpg.add_theme_color(dpg.mvThemeCol_FrameBgActive, (70, 70, 70, 255))
+            
+            # Text
+            dpg.add_theme_color(dpg.mvThemeCol_Text, (255, 255, 255, 255)) # White text
+            dpg.add_theme_color(dpg.mvThemeCol_TextDisabled, (150, 150, 150, 255))
+            
+            # Buttons
+            dpg.add_theme_color(dpg.mvThemeCol_Button, (50, 100, 200, 255)) # Blue buttons
+            dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, (70, 120, 220, 255)) # Lighter blue on hover
+            dpg.add_theme_color(dpg.mvThemeCol_ButtonActive, (90, 140, 240, 255)) # Even lighter blue when active
+            
+            # Headers
+            dpg.add_theme_color(dpg.mvThemeCol_Header, (60, 60, 60, 255))
+            dpg.add_theme_color(dpg.mvThemeCol_HeaderHovered, (70, 70, 70, 255))
+            dpg.add_theme_color(dpg.mvThemeCol_HeaderActive, (80, 80, 80, 255))
+
+            # Borders
+            dpg.add_theme_color(dpg.mvThemeCol_Border, (70, 70, 70, 255))
+            dpg.add_theme_color(dpg.mvThemeCol_BorderShadow, (0, 0, 0, 0))
+
+            # Title Bar
+            dpg.add_theme_color(dpg.mvThemeCol_TitleBg, (40, 40, 40, 255))
+            dpg.add_theme_color(dpg.mvThemeCol_TitleBgActive, (50, 50, 50, 255))
+            dpg.add_theme_color(dpg.mvThemeCol_TitleBgCollapsed, (40, 40, 40, 255))
+
+            # Scrollbar
+            dpg.add_theme_color(dpg.mvThemeCol_ScrollbarBg, (30, 30, 30, 255))
+            dpg.add_theme_color(dpg.mvThemeCol_ScrollbarGrab, (80, 80, 80, 255))
+            dpg.add_theme_color(dpg.mvThemeCol_ScrollbarGrabHovered, (100, 100, 100, 255))
+            dpg.add_theme_color(dpg.mvThemeCol_ScrollbarGrabActive, (120, 120, 120, 255))
+
+            # Separator
+            dpg.add_theme_color(dpg.mvThemeCol_Separator, (70, 70, 70, 255))
+            
+            # Styling for a slightly more modern look (optional)
+            # dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 3)
+            # dpg.add_theme_style(dpg.mvStyleVar_WindowRounding, 3)
+
+    dpg.bind_theme(global_theme) # Bind the theme globally
+
     with dpg.window(label="Wagner-Whitin Lot Sizing Calculator", tag="primary_window", width=800, height=700):
         with dpg.group(horizontal=True):
             dpg.add_text("Demand (comma-separated):")
@@ -223,19 +293,20 @@ if __name__ == "__main__":
         dpg.add_input_text(tag="demand_input", width=-1)
 
         with dpg.group(horizontal=True):
-            dpg.add_text("Setup Costs (comma-separated):")
-            _help_text("Enter fixed setup cost for each period, e.g., 100, 100, 100, 100")
+            dpg.add_text("Setup Cost (per period):")
+            _help_text("Enter a single fixed setup cost, e.g., 100")
         dpg.add_input_text(tag="setup_cost_input", width=-1)
 
         with dpg.group(horizontal=True):
-            dpg.add_text("Holding Costs (per unit, comma-separated):")
-            _help_text("Enter per-unit holding cost for each period, e.g., 2, 2, 2, 2")
+            dpg.add_text("Holding Cost (per unit, per period):")
+            _help_text("Enter a single per-unit holding cost, e.g., 2")
         dpg.add_input_text(tag="holding_cost_input", width=-1)
         
         dpg.add_spacer(height=10)
         with dpg.group(horizontal=True):
             dpg.add_button(label="Calculate", callback=calculate_callback, width=120)
             dpg.add_button(label="Use Example Data", callback=use_example_data_callback, width=150)
+            dpg.add_button(label="Clear Inputs", callback=clear_input_callback, width=120)
         
         dpg.add_spacer(height=10)
         dpg.add_text("", tag="status_text", color=[255, 0, 0])
