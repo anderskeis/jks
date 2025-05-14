@@ -86,22 +86,41 @@ def wagner_whitin(
     else:
         for i in range(len(schedule)):
             order_in_period_1_idx = schedule[i]
-            order_period_0_idx = order_in_period_1_idx - 1
+            order_period_0_idx = order_in_period_1_idx - 1 # This is 'j' for K[j] and H[j, t]
 
             if i + 1 < len(schedule):
                 next_order_period_1_idx = schedule[i+1]
-                end_coverage_period_0_idx = next_order_period_1_idx - 2
+                # This order covers demand up to the period *before* the next order.
+                # 0-indexed: (next_order_period_1_idx - 1 - 1) = next_order_period_1_idx - 2.
+                end_coverage_period_0_idx = next_order_period_1_idx - 2 
             else:
+                # Last order, covers demand up to the end of the horizon T.
+                # 0-indexed: T - 1.
                 end_coverage_period_0_idx = T - 1
             
+            # Calculate quantity for this specific order.
+            # For a valid schedule, order_period_0_idx should be <= end_coverage_period_0_idx.
             if order_period_0_idx <= end_coverage_period_0_idx:
                  quantity_to_order = np.sum(d[order_period_0_idx : end_coverage_period_0_idx + 1])
             else:
-                 quantity_to_order = 0 
+                 # This case should ideally not be reached with a valid Wagner-Whitin schedule.
+                 quantity_to_order = 0.0
+
+            # Calculate cost for this specific order
+            current_order_setup_cost = K[order_period_0_idx]
+            current_order_holding_cost = 0.0
+            
+            # Holding cost is incurred if the order covers demand beyond the current period
+            # and there's actual quantity being held.
+            # H[j, t_end] = holding costs for demands d[j+1]...d[t_end] if produced at j.
+            if quantity_to_order > 0 and order_period_0_idx < end_coverage_period_0_idx:
+                current_order_holding_cost = H[order_period_0_idx, end_coverage_period_0_idx]
+            
+            current_order_total_cost = current_order_setup_cost + current_order_holding_cost
 
             line = (f"  Order in Period {order_in_period_1_idx}: "
-                    f"Produce {quantity_to_order:.2f} units "
-                    f"(to cover demand for periods {order_period_0_idx + 1} to {end_coverage_period_0_idx + 1})")
+                    f"Produce {quantity_to_order:.2f} units (Cost: {current_order_total_cost:.2f}) "
+                    f"to cover demand for periods {order_period_0_idx + 1} to {end_coverage_period_0_idx + 1}.")
             detailed_plan_lines.append(line)
             
     return min_total_cost, schedule, detailed_plan_lines
@@ -124,9 +143,9 @@ def parse_input_string(input_str: str) -> Optional[List[float]]:
     except ValueError:
         return None
 
-_example_demand = [20, 0, 30, 10, 20, 30, 50, 23, 1435, 13, 13, 244, 11, 23, 12, 23, 12, 23, 12, 23, 12, 23, 12, 23, 33, 12, 1999, 34, 3243, 35, 12, 34, 76, 45, 344, 144, 122]
-_example_setup_cost_single_val = 100.0
-_example_holding_cost_single_val = 2.0
+_example_demand = [172, 183, 173, 233, 229, 239, 257, 251, 650, 636, 662, 674, 643]
+_example_setup_cost_single_val = 1745
+_example_holding_cost_single_val = 2.52
 
 def use_example_data_callback(sender: Any, app_data: Any, user_data: Any):
     """Populates input fields with example data."""
