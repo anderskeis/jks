@@ -1,185 +1,290 @@
-# User Guide: Wagner-Whitin Algorithm Script
+# User Guide: Wagner-Whitin Algorithm Script & Web UI
 
 **Date:** May 14, 2025
 
-This guide explains how to use the `Wagner-Whitin Simpel algoritme.py` script to solve lot-sizing problems. It covers basic usage, examples, and troubleshooting common issues.
+This guide explains how to use the `wagner_whitin_simple_algoritme.py` script and its associated web interface to solve lot-sizing problems. It covers usage for both the command-line interface (CLI) and the web UI, examples, and troubleshooting.
 
 ## 1. Introduction
 
-The `Wagner-Whitin Simpel algoritme.py` script implements the Wagner-Whitin algorithm, a dynamic programming approach to determine the optimal production (or order) schedule to meet demand over a set number of periods while minimizing total costs (setup costs and holding costs).
+The `wagner_whitin_simple_algoritme.py` script implements the Wagner-Whitin algorithm, a dynamic programming approach to determine the optimal production (or order) schedule to meet demand over a set number of periods while minimizing total costs (setup costs and holding costs).
 
-This script is useful for inventory management and production planning.
+This project provides two ways to interact with the algorithm:
+
+- **Command-Line Interface (CLI):** Directly run the Python script and input data via prompts.
+- **Web-based Graphical User Interface (Web UI):** Start a local web server to input data and see results in your browser.
+
+This tool is useful for inventory management and production planning.
 
 ## 2. Prerequisites and Installation
 
-Before using this script, ensure you have:
+Before using this script or web UI, ensure you have:
 
-1.  Python installed (version 3.7+ recommended).
-2.  The `numpy` library installed.
+1. Python installed (version 3.7+ recommended).
+2. The necessary Python packages installed. These are listed in `requirements.txt`.
 
-For detailed setup instructions, please refer to the `INSTALLATION_GUIDE.md` file located in the same directory.
+For detailed setup instructions, including how to set up a virtual environment and install dependencies from `requirements.txt` (which includes `numpy` and `Flask`), please refer to the `INSTALLATION_GUIDE.md` file located in the same directory.
 
 ## 3. How to Use the Script
 
-The core of the script is the `wagner_whitin` function. To use it, you typically modify the example usage block at the end of the script file.
+You can interact with the Wagner-Whitin algorithm either through the CLI or the Web UI.
 
-### 3.1. Input Parameters
+### 3.1. Using the Command-Line Interface (CLI)
 
-The `wagner_whitin` function takes three main arguments:
+The CLI allows you to run the script directly in your terminal and input data interactively.
 
-- `demand`: A list or NumPy array representing the demand for each period.
-  - Example: `[10, 20, 0, 30]` means demand is 10 in period 1, 20 in period 2, 0 in period 3, and 30 in period 4.
-- `setup_cost`: A list or NumPy array representing the fixed cost incurred if an order is placed (or production is set up) in a given period. This list must be the same length as the `demand` list.
-  - Example: `[100, 100, 100, 100]` means a setup cost of 100 for each period if an order is placed in that period.
-- `holding_cost`: A list or NumPy array representing the cost to hold one unit of inventory from one period to the next. This list must be the same length as the `demand` list.
-  - Example: `[1, 1, 1, 1]` means it costs 1 unit of currency to hold one item from period `t` to period `t+1`.
+**Steps:**
 
-### 3.2. Modifying Inputs in the Script
+1. **Activate Virtual Environment:**
+   Open PowerShell or Command Prompt, navigate to your project directory (`C:\Users\ankhs\repos\jks\`), and activate the virtual environment:
 
-Open the `Wagner-Whitin Simpel algoritme.py` file in a text editor. Scroll to the bottom where you see the `if __name__ == "__main__":` block.
+   ```powershell
+   # In PowerShell
+   .\venv\Scripts\Activate.ps1
+   ```
 
-```python
-if __name__ == "__main__":
-    # Example usage
-    # MODIFY THESE LISTS FOR YOUR PROBLEM
-    demand = [20, 0, 30, 10, 20] # Example: 5 periods
-    setup = [100] * len(demand)  # Example: Fixed setup cost of 100 for all periods
-    holding = [2] * len(demand) # Example: Fixed holding cost of 2 for all periods
+   ```cmd
+   # In Command Prompt
+   .\venv\Scripts\activate.bat
+   ```
 
-    C, order_period, schedule = wagner_whitin(demand, setup, holding)
-    print("Minimum total cost:", C[len(demand)])
-    print("Order schedule (order periods):", schedule)
+2. **Run the Script:**
+   Execute the script using Python:
+
+   ```powershell
+   python wagner_whitin_simple_algoritme.py
+   ```
+
+3. **Interactive Input:**
+   The script will guide you through the input process:
+
+   - **Use example data?**: You'll first be asked if you want to use predefined example data. Type `yes` or `no`.
+     - If `yes`, the script runs with a built-in example.
+     - If `no`, you'll be prompted to enter your own data:
+       - **Number of periods (T):** Enter the total number of periods for your planning horizon (e.g., `5`).
+       - **Demand for each period:** For each period `i`, enter the demand `d_i`.
+       - **Setup cost for each period:** For each period `i`, enter the setup cost `K_i`.
+       - **Holding cost for each period:** For each period `i`, enter the holding cost `h_i` (cost to hold one unit from period `i` to `i+1`).
+
+**CLI Output:**
+
+After providing all inputs, the script will print:
+
+- **Minimum total cost:** The lowest possible cost.
+- **Order schedule (periods to place orders - 1-indexed):** A comma-separated list of periods in which orders should be placed.
+- **Detailed Order Plan:** For each order period, the quantity to produce and the range of demand periods it covers.
+
+**Example CLI Interaction:**
+
+```text
+Wagner-Whitin Lot Sizing Calculator
+-----------------------------------
+Do you want to use the predefined example data? (yes/no): no
+
+Enter data for the lot-sizing problem:
+Enter the number of periods (T): 3
+
+Enter details for each period:
+--- Period 1 ---
+  Demand for period 1: 10
+  Setup cost for period 1: 50
+  Holding cost for period 1 (per unit from 1 to 2): 1
+--- Period 2 ---
+  Demand for period 2: 20
+  Setup cost for period 2: 50
+  Holding cost for period 2 (per unit from 2 to 3): 1
+--- Period 3 ---
+  Demand for period 3: 15
+  Setup cost for period 3: 50
+  Holding cost for period 3 (per unit from 3 to 4): 1
+-----------------------------------
+
+Calculating optimal schedule...
+
+--- Results ---
+Minimum total cost: 100.00
+Order schedule (periods to place orders - 1-indexed): 1
+Detailed Order Plan:
+  Order in Period 1: Produce 45.00 units (to cover demand for periods 1 to 3)
+-----------------------------------
 ```
 
-Change the `demand`, `setup`, and `holding` lists to match your specific problem.
+### 3.2. Using the Web-based Graphical User Interface (Web UI)
 
-### 3.3. Running the Script
+The Web UI provides a user-friendly way to input data and view results in your web browser. It uses Flask as a backend.
 
-1.  Ensure your virtual environment (e.g., `venv`) is activated in PowerShell or Command Prompt, and you are in the `jks` directory.
-    ```powershell
-    # If not already activated:
-    # .\venv\Scripts\Activate.ps1
-    # cd C:\Users\ankhs\repos\jks
-    ```
-2.  Run the script:
-    ```powershell
-    python "Wagner-Whitin Simpel algoritme.py"
-    ```
+**Steps:**
 
-### 3.4. Understanding the Output
+1. **Activate Virtual Environment:**
+   Ensure your virtual environment is active (see step 1 in section 3.1).
 
-The script will print two main pieces of information:
+2. **Start the Flask Web Server:**
+   In your terminal (PowerShell or Command Prompt), navigate to the project directory (`C:\Users\ankhs\repos\jks\`) and run the `app.py` file:
 
-- **Minimum total cost:** The lowest possible cost to meet all demands over the specified periods. This is the value `C[len(demand)]`.
-- **Order schedule (order periods):** A list of periods in which orders should be placed. The periods are 1-indexed.
-  - Example: `[1, 3]` means an order should be placed in period 1 (to cover demand for period 1 and possibly subsequent periods) and another order in period 3 (to cover demand for period 3 and possibly subsequent periods). The quantity to order in each of these periods is the sum of demands from that order period up to the period before the next scheduled order (or up to the final period if it\'s the last order).
+   ```powershell
+   python app.py
+   ```
+
+   You should see output indicating the server is running, typically on `http://127.0.0.1:5000/`.
+
+   ```text
+   * Serving Flask app 'app'
+   * Debug mode: off
+   * Running on http://127.0.0.1:5000 (Press CTRL+C to quit)
+   ```
+
+3. **Open in Browser:**
+   Open your web browser (e.g., Chrome, Firefox, Edge) and go to the address: `http://127.0.0.1:5000/`
+
+4. **Input Data via Web Form:**
+   The web page will display a form with the following fields:
+
+   - **Demand per period (comma-separated):** Enter demands for each period, separated by commas (e.g., `10,20,0,30`).
+   - **Setup cost per period (comma-separated):** Enter setup costs for each period, separated by commas (e.g., `100,100,100,100`).
+   - **Holding cost per period (comma-separated):** Enter holding costs for each period, separated by commas (e.g., `1,1,1,1`).
+
+   Ensure you enter the same number of values in each field.
+
+5. **Calculate and View Results:**
+   Click the "Calculate Optimal Schedule" button. The results (minimum total cost and order schedule) will be displayed below the form. If there are errors (e.g., mismatched number of inputs), an error message will appear.
+
+**Web UI Output:**
+
+The results section will show:
+
+- **Minimum Total Cost:** The calculated optimal cost.
+- **Order Schedule (Periods):** A list of periods in which to place orders.
+
+### 3.3. Input Parameters (Core Algorithm)
+
+The underlying `wagner_whitin` function (used by both CLI and Web UI) takes three main arguments:
+
+- `demand`: A list or NumPy array representing the demand for each period.
+- `setup_cost`: A list or NumPy array representing the fixed cost incurred if an order is placed in a given period. Must be the same length as `demand`.
+- `holding_cost`: A list or NumPy array representing the cost to hold one unit of inventory from one period to the next. Must be the same length as `demand`.
 
 ## 4. Examples
 
-### 4.1. Beginner Example
+### 4.1. Example 1: Simple 3-Period Scenario
 
-**Scenario:** You have a 3-period planning horizon.
+**Scenario:**
 
-- Demands: Period 1: 10 units, Period 2: 20 units, Period 3: 15 units.
-- Setup Cost: 50 for any period an order is placed.
-- Holding Cost: 1 per unit per period.
+- Periods: 3
+- Demands: `[10, 20, 15]`
+- Setup Costs: `[50, 50, 50]` (or `50` for all periods)
+- Holding Costs: `[1, 1, 1]` (or `1` for all periods)
 
-**Script Modification:**
+**Using the CLI:**
 
-```python
-if __name__ == "__main__":
-    demand = [10, 20, 15]
-    setup = [50, 50, 50]    # Or setup = [50] * len(demand)
-    holding = [1, 1, 1]     # Or holding = [1] * len(demand)
+Follow the prompts as shown in section 3.1, entering the data above.
+Expected Output:
 
-    C, order_period, schedule = wagner_whitin(demand, setup, holding)
-    print("Minimum total cost:", C[len(demand)])
-    print("Order schedule (order periods):", schedule)
+```text
+Minimum total cost: 100.00
+Order schedule (periods to place orders - 1-indexed): 1
+Detailed Order Plan:
+  Order in Period 1: Produce 45.00 units (to cover demand for periods 1 to 3)
 ```
 
-**Expected Output (Illustrative - actual values depend on the algorithm\'s precise calculation):**
+**Using the Web UI:**
 
-```
-Minimum total cost: 135.0
-Order schedule (order periods): [1, 3]
-```
+1. Start `app.py`.
+2. Open `http://127.0.0.1:5000/`.
+3. Input:
+   - Demand: `10,20,15`
+   - Setup cost: `50,50,50`
+   - Holding cost: `1,1,1`
+4. Click "Calculate".
 
-_Interpretation:_
+Expected Output on Web Page:
 
-- The minimum cost is 135.
-- Order in period 1 (for periods 1 & 2: 10+20=30 units).
-  - Cost: 50 (setup) + 0 (holding for period 1 demand) + 20\*1 (holding for period 2 demand from period 1 to 2).
-- Order in period 3 (for period 3: 15 units).
-  - Cost: 50 (setup).
-- Total: 50 + 20 + 50 = 120. (Note: The example output was illustrative, the algorithm finds the true optimum. Let\'s trace this specific case:
-  * Order P1 for P1, P2, P3: 50 (setup) + (20*1) + (15*2) = 50 + 20 + 30 = 100
-  * Order P1 for P1, P2; Order P3 for P3: 50 (setup P1) + (20*1) (hold P2) + 50 (setup P3) = 50 + 20 + 50 = 120
-  * Order P1 for P1; Order P2 for P2, P3: 50 (setup P1) + 50 (setup P2) + (15*1) (hold P3) = 50 + 50 + 15 = 115
-  * Order P1 for P1; Order P2 for P2; Order P3 for P3: 50+50+50 = 150
-  The algorithm would find the optimal, which is 100 in this case, with schedule [1]. The output would be:
-  `    Minimum total cost: 100.0
-    Order schedule (order periods): [1]
-   `
-  )
+- Minimum Total Cost: 100.0
+- Order Schedule (Periods): `[1]`
 
-### 4.2. Advanced Example
+### 4.2. Example 2: 5 Periods with Zero Demand and Varying Costs
 
-**Scenario:** 5 periods with varying costs and a period with zero demand.
+**Scenario:**
 
+- Periods: 5
 - Demands: `[25, 40, 0, 30, 50]`
-- Setup Costs: `[200, 200, 180, 200, 180]` (Cheaper to set up in periods 3 and 5)
-- Holding Costs: `[2, 2, 1, 1, 3]` (Holding cost changes, cheaper in later periods before the last)
+- Setup Costs: `[200, 200, 180, 200, 180]`
+- Holding Costs: `[2, 2, 1, 1, 3]`
 
-**Script Modification:**
+**Using the CLI:**
 
-```python
-if __name__ == "__main__":
-    demand = [25, 40, 0, 30, 50]
-    setup = [200, 200, 180, 200, 180]
-    holding = [2, 2, 1, 1, 3]
+Enter `no` for example data, then `5` for periods, and then input the lists above when prompted.
 
-    C, order_period, schedule = wagner_whitin(demand, setup, holding)
-    print("Minimum total cost:", C[len(demand)])
-    print("Order schedule (order periods):", schedule)
-```
+**Using the Web UI:**
 
-**Running this would yield an optimal schedule and cost based on these specific inputs.** The algorithm handles zero demand periods correctly by not producing for them unless it\'s optimal to produce in advance for a future period.
+1. Start `app.py`.
+2. Open `http://127.0.0.1:5000/`.
+3. Input:
+   - Demand: `25,40,0,30,50`
+   - Setup cost: `200,200,180,200,180`
+   - Holding cost: `2,2,1,1,3`
+4. Click "Calculate".
+
+The output for both methods will show the optimal cost and schedule for this specific scenario. The algorithm correctly handles zero demand periods.
 
 ## 5. Typical Error Messages and Troubleshooting
 
-- **`ModuleNotFoundError: No module named 'numpy'`**
+- **`ModuleNotFoundError: No module named 'numpy'` or `No module named 'flask'`**
 
-  - **Cause:** The `numpy` library is not installed, or Python cannot find it.
+  - **Cause:** Required libraries are not installed, or Python cannot find them.
   - **Solution:**
-    1.  Ensure your virtual environment is activated.
-    2.  Run `pip install numpy`.
-    3.  Refer to `INSTALLATION_GUIDE.md` for more details.
+    1. Ensure your virtual environment is activated.
+    2. Run `pip install -r requirements.txt` in your project directory.
+    3. Refer to `INSTALLATION_GUIDE.md` for more details.
 
-- **`IndexError: list index out of range` (or similar errors from NumPy)**
+- **CLI: `Invalid input. Please enter a number/integer.`**
 
-  - **Cause:** The `demand`, `setup_cost`, or `holding_cost` lists might not be of the same length, or there\'s an issue with how they are indexed internally (less likely with the current script structure if inputs are correct).
+  - **Cause:** You entered non-numeric text when a number was expected.
+  - **Solution:** Re-enter a valid number.
+
+- **Web UI: Error message "Number of items in demand, setup costs, and holding costs must be the same."**
+
+  - **Cause:** The comma-separated lists entered into the web form do not have the same number of elements.
+  - **Solution:** Correct the input fields so that `demand`, `setup_cost`, and `holding_cost` all have an equal number of comma-separated values.
+
+- **Web UI: Error message "Invalid input: All values must be numbers."**
+
+  - **Cause:** One or more values in the comma-separated lists are not valid numbers.
+  - **Solution:** Ensure all entries are numeric.
+
+- **`IndexError: list index out of range` (or similar errors from NumPy in CLI)**
+
+  - **Cause:** This is less likely with the interactive CLI if inputs are entered as prompted. If modifying the script directly, it could mean `demand`, `setup_cost`, or `holding_cost` lists are not of the same length.
   - **Solution:**
-    1.  Verify that `len(demand)`, `len(setup_cost)`, and `len(holding_cost)` are all equal.
-    2.  Ensure all lists contain valid numerical data.
+    1. If using CLI, ensure you complete all prompts correctly.
+    2. If modifying script code, verify that `len(demand)`, `len(setup_cost)`, and `len(holding_cost)` are all equal.
 
-- **`TypeError: unsupported operand type(s) for +: 'int' and 'NoneType'` (or similar type errors)**
+- **`TypeError: unsupported operand type(s)` (CLI)**
 
-  - **Cause:** One of the input lists might contain non-numeric data (e.g., `None`, a string).
-  - **Solution:** Ensure all elements in `demand`, `setup_cost`, and `holding_cost` are numbers (integers or floats). The script attempts to convert to `float` using `np.array(..., dtype=float)`, which should handle integers, but `None` or strings will cause issues.
+  - **Cause:** Input lists might contain non-numeric data if the script was modified or if there's a bug in input handling (less likely with current `get_numeric_input`).
+  - **Solution:** Ensure all data provided are numbers.
 
 - **Output shows very high costs or unexpected schedule:**
 
-  - **Cause:** Input data might be incorrect (e.g., extremely high holding costs, very low setup costs leading to frequent orders, or vice-versa).
+  - **Cause:** Input data might be incorrect (e.g., typos, extremely high holding costs, very low setup costs leading to frequent orders, or vice-versa).
   - **Solution:**
-    1.  Double-check the `demand`, `setup_cost`, and `holding_cost` values for typos or logical errors.
-    2.  Test with a very small, simple example for which you can manually calculate or estimate the optimal solution to verify the algorithm\'s behavior.
+    1. Double-check the `demand`, `setup_cost`, and `holding_cost` values for typos or logical errors.
+    2. Test with a very small, simple example for which you can manually calculate or estimate the optimal solution.
 
 - **PowerShell: `.\venv\Scripts\Activate.ps1 cannot be loaded because running scripts is disabled on this system.`**
+
   - **Cause:** PowerShell execution policy prevents running local scripts.
   - **Solution:** As mentioned in `INSTALLATION_GUIDE.md`, open PowerShell as Administrator and run:
+
     ```powershell
     Set-ExecutionPolicy RemoteSigned -Scope Process
     ```
+
     Then try activating the virtual environment again in your regular PowerShell window.
 
-This user guide should help you effectively use the Wagner-Whitin script. For further assistance or more complex scenarios, understanding the underlying Wagner-Whitin algorithm principles is recommended.
+- **Web UI: Flask server (`app.py`) doesn't start or shows errors.**
+  - **Cause:** Could be various issues: Flask not installed, port already in use, syntax errors in `app.py` or `wagner_whitin_simple_algoritme.py`.
+  - **Solution:**
+    1. Ensure Flask is installed (`pip install -r requirements.txt`).
+    2. Check the terminal output for specific error messages when you run `python app.py`.
+    3. If the port is in use, Flask will usually indicate this. You might need to stop the other process or modify `app.py` to use a different port (e.g., `app.run(debug=True, port=5001)`).
+
+This user guide should help you effectively use the Wagner-Whitin script and web interface.
