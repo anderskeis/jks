@@ -1,150 +1,257 @@
 import numpy as np
+import dearpygui.dearpygui as dpg
+from typing import List, Tuple, Optional, Any
 
-def wagner_whitin(demand, setup_cost, holding_cost):
+# Optimal O(T^2) H-matrix calculation and return detailed plan
+def wagner_whitin(
+    demand: List[float], 
+    setup_cost: List[float], 
+    holding_cost: List[float]
+) -> Tuple[float, List[int], List[str]]:
     """
     Solves the Wagner-Whitin lot-sizing problem using dynamic programming.
 
     Parameters
     ----------
-    demand : list or 1D-array of length T
+    demand : list of float of length T
         demand d_t for periods t = 1..T.
-    setup_cost : list or 1D-array of length T
+    setup_cost : list of float of length T
         fixed ordering cost K_t for each period.
-    holding_cost : list or 1D-array of length T
+    holding_cost : list of float of length T
         per-unit holding cost h_t for carrying inventory from t to t+1.
 
     Returns
     -------
-    C : 1D-array of length T+1
-        C[t] = minimum cost to satisfy demands up through period t.
-    order_period : list of length T+1
-        order_period[t] = the period j at which the order covering demand up to t was placed.
-    schedule : list of periods
-        list of order periods in optimal schedule.
+    min_total_cost : float
+        Minimum total cost to satisfy all demands.
+    schedule : list of int
+        List of 1-indexed periods in which orders should be placed.
+    detailed_plan_lines : list of str
+        A list of strings, where each string describes an order in the plan.
     """
     T = len(demand)
-    # Convert inputs to arrays for easier slicing
+    if T == 0:
+        return 0.0, [], ["No demand data provided."]
+
     d = np.array(demand, dtype=float)
     K = np.array(setup_cost, dtype=float)
     h = np.array(holding_cost, dtype=float)
 
-    # Precompute holding cost matrix H[j, t]: cost to hold from j to cover demand through t
-    H = np.zeros((T, T))
-    for j in range(T):
-        # cumulative demand from j+1 to each t
-        for t in range(j+1, T):
-            # sum over i=j to t-1 of h[i] * sum_{u=i+1 to t} d[u]
-            cost = 0.0
-            for i in range(j, t):
-                cost += h[i] * d[i+1:t+1].sum()
-            H[j, t] = cost
-
+    # Precompute holding cost matrix H[j, t]
+    H = np.zeros((T, T), dtype=float)
+    for j_idx in range(T):
+        current_sum_h_from_j = 0.0
+        for t_idx in range(j_idx + 1, T):
+            current_sum_h_from_j += h[t_idx-1]
+            H[j_idx, t_idx] = H[j_idx, t_idx-1] + d[t_idx] * current_sum_h_from_j
+            
     # DP arrays
-    C = np.full(T+1, np.inf)
-    order_period = [-1] * (T+1)
-    # base case
+    C = np.full(T + 1, np.inf)
+    order_period = [-1] * (T + 1)
+    
     C[0] = 0.0
 
     # Recurrence
-    for t in range(1, T+1):
-        for j in range(1, t+1):
-            cost = C[j-1] + K[j-1]
-            if j-1 < t-1:
-                cost += H[j-1, t-1]
-            if cost < C[t]:
-                C[t] = cost
-                order_period[t] = j
+    for t_dp in range(1, T + 1):
+        for j_dp in range(1, t_dp + 1):
+            current_total_cost = C[j_dp-1] + K[j_dp-1]
+            if j_dp -1 < t_dp -1:
+                current_total_cost += H[j_dp-1, t_dp-1]
+            
+            if current_total_cost < C[t_dp]:
+                C[t_dp] = current_total_cost
+                order_period[t_dp] = j_dp
+
+    min_total_cost = C[T]
 
     # Backtrack to find schedule
     schedule = []
-    t = T
-    while t > 0:
-        j = order_period[t]
-        schedule.append(j)
-        t = j - 1
+    t_backtrack = T
+    while t_backtrack > 0:
+        j_sched = order_period[t_backtrack]
+        schedule.append(j_sched)
+        t_backtrack = j_sched - 1
     schedule.reverse()
 
-    return C, order_period, schedule
+    # Generate detailed plan
+    detailed_plan_lines = []
+    if not schedule or min_total_cost == np.inf:
+        if np.all(d == 0):
+            detailed_plan_lines.append("No demand in any period. No orders needed.")
+            min_total_cost = 0.0
+        elif min_total_cost == np.inf:
+            detailed_plan_lines.append("Could not find a valid production plan.")
+        else:
+            detailed_plan_lines.append("No orders are needed.")
+    else:
+        for i in range(len(schedule)):
+            order_in_period_1_idx = schedule[i]
+            order_period_0_idx = order_in_period_1_idx - 1
 
-
-def get_numeric_input(prompt_message):
-    """Helper function to get and validate numeric input."""
-    while True:
-        try:
-            value = float(input(prompt_message))
-            return value
-        except ValueError:
-            print("Invalid input. Please enter a number.")
-
-def get_integer_input(prompt_message, min_value=1):
-    """Helper function to get and validate positive integer input."""
-    while True:
-        try:
-            value = int(input(prompt_message))
-            if value >= min_value:
-                return value
+            if i + 1 < len(schedule):
+                next_order_period_1_idx = schedule[i+1]
+                end_coverage_period_0_idx = next_order_period_1_idx - 2
             else:
-                print(f"Please enter an integer greater than or equal to {min_value}.")
-        except ValueError:
-            print("Invalid input. Please enter an integer.")
+                end_coverage_period_0_idx = T - 1
+            
+            if order_period_0_idx <= end_coverage_period_0_idx:
+                 quantity_to_order = np.sum(d[order_period_0_idx : end_coverage_period_0_idx + 1])
+            else:
+                 quantity_to_order = 0 
+
+            line = (f"  Order in Period {order_in_period_1_idx}: "
+                    f"Produce {quantity_to_order:.2f} units "
+                    f"(to cover demand for periods {order_period_0_idx + 1} to {end_coverage_period_0_idx + 1})")
+            detailed_plan_lines.append(line)
+            
+    return min_total_cost, schedule, detailed_plan_lines
+
+
+# --- Dear PyGui specific code ---
+
+def _help_text(message: str):
+    """Adds a (?) mark with a tooltip in Dear PyGui."""
+    dpg.add_text("(?)", color=[150, 150, 150])
+    with dpg.tooltip(dpg.last_item()):
+        dpg.add_text(message)
+
+def parse_input_string(input_str: str) -> Optional[List[float]]:
+    """Parses a comma-separated string of numbers into a list of floats."""
+    if not input_str.strip():
+        return []
+    try:
+        return [float(x.strip()) for x in input_str.split(',')]
+    except ValueError:
+        return None
+
+_example_demand = [20, 0, 30, 10, 20, 30, 50, 23, 1435, 13, 13, 244, 11, 23, 12, 23, 12, 23, 12, 23, 12, 23, 12, 23, 33, 12, 1999, 34, 3243, 35, 12, 34, 76, 45, 344, 144, 122]
+_example_setup_cost_val = 100.0
+_example_holding_cost_val = 2.0
+
+def use_example_data_callback(sender: Any, app_data: Any, user_data: Any):
+    """Populates input fields with example data."""
+    demand_str = ", ".join(map(str, _example_demand))
+    num_periods = len(_example_demand)
+    setup_str = ", ".join([str(_example_setup_cost_val)] * num_periods)
+    holding_str = ", ".join([str(_example_holding_cost_val)] * num_periods)
+
+    dpg.set_value("demand_input", demand_str)
+    dpg.set_value("setup_cost_input", setup_str)
+    dpg.set_value("holding_cost_input", holding_str)
+    dpg.set_value("status_text", "Example data loaded. Click 'Calculate'.")
+    dpg.set_value("result_cost_text", "Minimum total cost: -")
+    dpg.set_value("result_schedule_text", "Order schedule: -")
+    dpg.set_value("result_plan_text", "")
+
+
+def calculate_callback(sender: Any, app_data: Any, user_data: Any):
+    """Callback for the Calculate button."""
+    dpg.set_value("status_text", "Calculating...")
+
+    demand_str = dpg.get_value("demand_input")
+    setup_cost_str = dpg.get_value("setup_cost_input")
+    holding_cost_str = dpg.get_value("holding_cost_input")
+
+    demand = parse_input_string(demand_str)
+    setup_cost = parse_input_string(setup_cost_str)
+    holding_cost = parse_input_string(holding_cost_str)
+
+    error_messages = []
+    if demand is None:
+        error_messages.append("Invalid format for Demand. Use comma-separated numbers.")
+    if setup_cost is None:
+        error_messages.append("Invalid format for Setup Costs. Use comma-separated numbers.")
+    if holding_cost is None:
+        error_messages.append("Invalid format for Holding Costs. Use comma-separated numbers.")
+
+    if error_messages:
+        dpg.set_value("status_text", "Error: " + " | ".join(error_messages))
+        return
+
+    if not demand:
+        error_messages.append("Demand data cannot be empty.")
+    else:
+        if not (len(demand) == len(setup_cost) == len(holding_cost)):
+            error_messages.append(
+                f"All inputs (Demand, Setup, Holding) must have the same number of periods. "
+                f"Got: D={len(demand)}, S={len(setup_cost)}, H={len(holding_cost)}"
+            )
+        if any(d < 0 for d in demand):
+             error_messages.append("Demand values cannot be negative.")
+        if any(s < 0 for s in setup_cost):
+             error_messages.append("Setup costs cannot be negative.")
+        if any(h < 0 for h in holding_cost):
+             error_messages.append("Holding costs cannot be negative.")
+
+    if error_messages:
+        dpg.set_value("status_text", "Error: " + " | ".join(error_messages))
+        return
+    
+    if not demand:
+        dpg.set_value("status_text", "No data to process.")
+        dpg.set_value("result_cost_text", "Minimum total cost: -")
+        dpg.set_value("result_schedule_text", "Order schedule: -")
+        dpg.set_value("result_plan_text", "")
+        return
+
+    try:
+        min_cost, schedule, detailed_plan = wagner_whitin(demand, setup_cost, holding_cost)
+
+        dpg.set_value("result_cost_text", f"Minimum total cost: {min_cost:.2f}")
+        if schedule:
+            dpg.set_value("result_schedule_text", "Order schedule (1-indexed periods): " + ", ".join(map(str, schedule)))
+        else:
+            dpg.set_value("result_schedule_text", "Order schedule: No orders needed or plan not found.")
+        
+        dpg.set_value("result_plan_text", "\n".join(detailed_plan))
+        dpg.set_value("status_text", "Calculation complete.")
+
+    except Exception as e:
+        dpg.set_value("status_text", f"An error occurred during calculation: {e}")
+        dpg.set_value("result_cost_text", "Minimum total cost: -")
+        dpg.set_value("result_schedule_text", "Order schedule: -")
+        dpg.set_value("result_plan_text", "")
+
 
 if __name__ == "__main__":
-    print("Wagner-Whitin Lot Sizing Calculator")
-    print("-----------------------------------")
+    dpg.create_context()
 
-    use_example = input("Do you want to use the predefined example data? (yes/no): ").strip().lower()
+    with dpg.window(label="Wagner-Whitin Lot Sizing Calculator", tag="primary_window", width=800, height=700):
+        with dpg.group(horizontal=True):
+            dpg.add_text("Demand (comma-separated):")
+            _help_text("Enter demand for each period, e.g., 20, 0, 30, 10")
+        dpg.add_input_text(tag="demand_input", width=-1)
 
-    if use_example == 'yes':
-        # Predefined example usage (as was originally in the script)
-        demand = [20, 0, 30, 10, 20, 30, 50, 23, 1435, 13, 13, 244, 11, 23, 12, 23, 12, 23, 12, 23, 12, 23, 12, 23, 33, 12, 1999, 34, 3243, 35, 12, 34, 76, 45, 344, 144, 122,]
-        setup = [100] * len(demand)  # Fixed ordering cost for each period
-        holding = [2] * len(demand) # Fixed Holding cost for each period
-        print("\nUsing predefined example data.")
-    else:
-        print("\nEnter data for the lot-sizing problem:")
-        num_periods = get_integer_input("Enter the number of periods (T): ")
+        with dpg.group(horizontal=True):
+            dpg.add_text("Setup Costs (comma-separated):")
+            _help_text("Enter fixed setup cost for each period, e.g., 100, 100, 100, 100")
+        dpg.add_input_text(tag="setup_cost_input", width=-1)
 
-        demand = []
-        setup = []
-        holding = []
+        with dpg.group(horizontal=True):
+            dpg.add_text("Holding Costs (per unit, comma-separated):")
+            _help_text("Enter per-unit holding cost for each period, e.g., 2, 2, 2, 2")
+        dpg.add_input_text(tag="holding_cost_input", width=-1)
+        
+        dpg.add_spacer(height=10)
+        with dpg.group(horizontal=True):
+            dpg.add_button(label="Calculate", callback=calculate_callback, width=120)
+            dpg.add_button(label="Use Example Data", callback=use_example_data_callback, width=150)
+        
+        dpg.add_spacer(height=10)
+        dpg.add_text("", tag="status_text", color=[255, 0, 0])
+        dpg.add_separator()
+        dpg.add_spacer(height=10)
 
-        print("\nEnter details for each period:")
-        for i in range(num_periods):
-            print(f"--- Period {i+1} ---")
-            d_val = get_numeric_input(f"  Demand for period {i+1}: ")
-            k_val = get_numeric_input(f"  Setup cost for period {i+1}: ")
-            h_val = get_numeric_input(f"  Holding cost for period {i+1} (per unit from {i+1} to {i+2}): ")
-            demand.append(d_val)
-            setup.append(k_val)
-            holding.append(h_val)
-        print("-----------------------------------")
+        dpg.add_text("--- Results ---", color=[200, 200, 200])
+        dpg.add_text("Minimum total cost: -", tag="result_cost_text")
+        dpg.add_text("Order schedule: -", tag="result_schedule_text")
+        
+        dpg.add_text("Detailed Order Plan:")
+        dpg.add_input_text(tag="result_plan_text", multiline=True, readonly=True, width=-1, height=200)
 
-    if not demand: # Should not happen if logic is correct, but as a safeguard
-        print("No data provided. Exiting.")
-    else:
-        print("\nCalculating optimal schedule...")
-        C, order_period, schedule = wagner_whitin(demand, setup, holding)
-
-        print("\n--- Results ---")
-        print(f"Minimum total cost: {C[len(demand)]:.2f}")
-        if schedule:
-            print("Order schedule (periods to place orders - 1-indexed):", ", ".join(map(str, schedule)))
-            # Optional: Print detailed order quantities
-            print("\nDetailed Order Plan:")
-            current_order_idx = 0
-            for i in range(len(schedule)):
-                order_in_period = schedule[i]
-                start_period_idx = order_in_period -1 # 0-indexed
-                
-                if i + 1 < len(schedule):
-                    # Order covers demand until the period before the next scheduled order
-                    end_period_idx = schedule[i+1] - 2 # 0-indexed, period before next order
-                else:
-                    # Last order, covers demand until the end of the horizon
-                    end_period_idx = len(demand) - 1 # 0-indexed
-                
-                quantity_to_order = sum(demand[k] for k in range(start_period_idx, end_period_idx + 1))
-                print(f"  Order in Period {order_in_period}: Produce {quantity_to_order:.2f} units (to cover demand for periods {start_period_idx+1} to {end_period_idx+1})")
-        else:
-            print("No orders are needed (e.g., if demand is zero for all periods).")
-        print("-----------------------------------")
+    dpg.create_viewport(title='Wagner-Whitin Calculator', width=820, height=750)
+    dpg.setup_dearpygui()
+    dpg.show_viewport()
+    dpg.set_primary_window("primary_window", True)
+    dpg.start_dearpygui()
+    dpg.destroy_context()
