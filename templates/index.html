@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wagner-Whitin Calculator</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f7f6;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 600px;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        input[type="text"] {
+            width: calc(100% - 22px);
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+        input[type="text"]:focus {
+            border-color: #007bff;
+            outline: none;
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+        }
+        .hint {
+            font-size: 0.85em;
+            color: #777;
+            margin-top: 5px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+            width: 100%;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .results {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            border: 1px solid #ced4da;
+        }
+        .results h2 {
+            margin-top: 0;
+            color: #17a2b8;
+        }
+        .error {
+            color: #dc3545;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Wagner-Whitin Lot Sizing Calculator</h1>
+
+        <div class="input-group">
+            <label for="demand">Demand per Period:</label>
+            <input type="text" id="demand" name="demand" placeholder="e.g., 20, 0, 30, 10, 20">
+            <p class="hint">Enter comma-separated numbers for demand in each period.</p>
+        </div>
+
+        <div class="input-group">
+            <label for="setup_cost">Setup Cost per Period:</label>
+            <input type="text" id="setup_cost" name="setup_cost" placeholder="e.g., 100, 100, 100, 100, 100">
+            <p class="hint">Enter comma-separated setup costs for each period.</p>
+        </div>
+
+        <div class="input-group">
+            <label for="holding_cost">Holding Cost per Unit per Period:</label>
+            <input type="text" id="holding_cost" name="holding_cost" placeholder="e.g., 2, 2, 2, 2, 2">
+            <p class="hint">Enter comma-separated holding costs for each period.</p>
+        </div>
+
+        <button onclick="calculateWagnerWhitin()">Calculate Optimal Schedule</button>
+
+        <div id="results-container" class="results hidden">
+            <h2>Results</h2>
+            <p><strong>Minimum Total Cost:</strong> <span id="min-total-cost"></span></p>
+            <p><strong>Order Schedule (Periods to Order):</strong> <span id="order-schedule"></span></p>
+        </div>
+
+        <div id="error-container" class="error hidden">
+            <p><strong>Error:</strong> <span id="error-message"></span></p>
+        </div>
+    </div>
+
+    <script>
+        async function calculateWagnerWhitin() {
+            const demandStr = document.getElementById('demand').value;
+            const setupCostStr = document.getElementById('setup_cost').value;
+            const holdingCostStr = document.getElementById('holding_cost').value;
+
+            const resultsContainer = document.getElementById('results-container');
+            const errorContainer = document.getElementById('error-container');
+            const minTotalCostEl = document.getElementById('min-total-cost');
+            const orderScheduleEl = document.getElementById('order-schedule');
+            const errorMessageEl = document.getElementById('error-message');
+
+            // Hide previous results/errors
+            resultsContainer.classList.add('hidden');
+            errorContainer.classList.add('hidden');
+
+            try {
+                const response = await fetch('/calculate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        demand: demandStr, // Send as string, backend will parse
+                        setup_cost: setupCostStr,
+                        holding_cost: holdingCostStr
+                    }),
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    minTotalCostEl.textContent = result.min_total_cost.toFixed(2);
+                    orderScheduleEl.textContent = result.order_schedule.join(', ') || 'No orders needed';
+                    resultsContainer.classList.remove('hidden');
+                } else {
+                    errorMessageEl.textContent = result.error || 'An unknown error occurred.';
+                    errorContainer.classList.remove('hidden');
+                }
+            } catch (error) {
+                errorMessageEl.textContent = 'Failed to connect to the server or parse the response.';
+                errorContainer.classList.remove('hidden');
+                console.error("Calculation error:", error);
+            }
+        }
+    </script>
+</body>
+</html>
